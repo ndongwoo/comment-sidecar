@@ -18,6 +18,7 @@ RUN printf '%s\n' \
     'port 1025' \
     'from comment-sidecar@localhost' \
     > /etc/msmtprc \
-    && chmod 600 /etc/msmtprc \
+    && chown root:www-data /etc/msmtprc \
+    && chmod 640 /etc/msmtprc \
     && printf '%s\n' 'sendmail_path = "/usr/bin/msmtp -t"' \
     > /usr/local/etc/php/conf.d/comment-sidecar-mail.ini
