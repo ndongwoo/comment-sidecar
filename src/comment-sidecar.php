@@ -3,8 +3,10 @@ include_once __DIR__ . "/common.php";
 
 /**
  * HTTP endpoints
+ * GET comment-sidecar.php?site=<site>&pageId=<stable-page-id>
+ *      get comments by explicit stable page id
  * GET comment-sidecar.php?site=<site>&path=<path>
- *      get comments
+ *      get comments using the legacy path-based thread key
  * POST comment-sidecar.php with comment JSON
  *      create a new comment
  */
@@ -73,17 +75,45 @@ function isInvalidReplyToId($ex){
 }
 
 function getCommentsAsJson() {
-    if (!isset($_GET['site']) or empty($_GET['site'])
-        or !isset($_GET['path']) or empty($_GET['path'])) {
+    if (!isset($_GET['site']) || !is_string($_GET['site']) || trim($_GET['site']) === '') {
         throw new InvalidRequestException("Please submit both query parameters 'site' and 'path'");
     }
-    $stmt = Database::getConnection()->prepare("SELECT id, author, content, email, reply_to, site, path, unix_timestamp(creation_date) as creationTimestamp FROM comments WHERE site = :site and path = :path ORDER BY creation_date desc;");
-    $stmt->bindParam(":site", $_GET['site']);
-    $stmt->bindParam(":path", $_GET['path']);
+
+    $site = $_GET['site'];
+    $pageId = $_GET['pageId'] ?? null;
+
+    if (is_string($pageId) && trim($pageId) !== '') {
+        if (utf8Length($pageId) > 170) {
+            throw new InvalidRequestException("pageId value exceeds maximal length of 170");
+        }
+
+        $stmt = Database::getConnection()->prepare(
+            "SELECT id, author, content, email, reply_to, site, path, page_id, unix_timestamp(creation_date) as creationTimestamp
+             FROM comments
+             WHERE site = :site and page_id = :page_id
+             ORDER BY creation_date desc;"
+        );
+        $stmt->bindParam(":site", $site);
+        $stmt->bindParam(":page_id", $pageId);
+    } else {
+        if (!isset($_GET['path']) || !is_string($_GET['path']) || trim($_GET['path']) === '') {
+            throw new InvalidRequestException("Please submit both query parameters 'site' and 'path'");
+        }
+
+        $path = $_GET['path'];
+        $stmt = Database::getConnection()->prepare(
+            "SELECT id, author, content, email, reply_to, site, path, page_id, unix_timestamp(creation_date) as creationTimestamp
+             FROM comments
+             WHERE site = :site and path = :path
+             ORDER BY creation_date desc;"
+        );
+        $stmt->bindParam(":site", $site);
+        $stmt->bindParam(":path", $path);
+    }
+
     $stmt->execute();
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $json = mapToJson($results);
-    return $json;
+    return mapToJson($results);
 }
 
 const ROOT = "ROOT";
@@ -128,11 +158,17 @@ function createReplyIdToCommentsMap($results) {
 
 function createComment($comment) {
     try {
-        $stmt = Database::getConnection()->prepare("INSERT INTO comments (author, email, content, reply_to, site, path, subscribed, unsubscribe_token) VALUES (:author, :email, :content, :reply_to, :site, :path, :subscribed, :unsubscribe_token);");
+        $stmt = Database::getConnection()->prepare("INSERT INTO comments (author, email, content, reply_to, site, path, page_id, subscribed, unsubscribe_token) VALUES (:author, :email, :content, :reply_to, :site, :path, :page_id, :subscribed, :unsubscribe_token);");
         $author = htmlspecialchars($comment["author"], ENT_COMPAT | ENT_SUBSTITUTE, 'UTF-8');
         $content = htmlspecialchars($comment["content"], ENT_COMPAT | ENT_SUBSTITUTE, 'UTF-8');
         $email = $comment["email"] ?? null;
         $replyTo = $comment["replyTo"] ?? null;
+        $pageId = null;
+        if (isset($comment["pageId"])
+            && is_string($comment["pageId"])
+            && trim($comment["pageId"]) !== '') {
+            $pageId = $comment["pageId"];
+        }
         $subscribed = ($email !== null && trim($email) !== '');
         $stmt->bindParam(':author', $author);
         $stmt->bindParam(':email', $email); // optional. can be null
@@ -140,6 +176,7 @@ function createComment($comment) {
         $stmt->bindParam(':reply_to', $replyTo);
         $stmt->bindParam(':site', $comment["site"]);
         $stmt->bindParam(':path', $comment["path"]);
+        $stmt->bindParam(':page_id', $pageId);
         $stmt->bindValue(':subscribed', $subscribed, PDO::PARAM_BOOL);
         $stmt->bindValue(':unsubscribe_token', generateRandomString(10));
         $stmt->execute();
@@ -178,6 +215,7 @@ function validatePostedComment($comment){
     checkMaxLength($comment, 'email', 40);
     checkMaxLength($comment, 'site', 40);
     checkMaxLength($comment, 'path', 170);
+    checkMaxLength($comment, 'pageId', 170);
 }
 
 function checkMaxLength($comment, $fieldName, $maxLength) {

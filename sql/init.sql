@@ -8,6 +8,7 @@ CREATE TABLE comments (
   `reply_to` int(11) DEFAULT NULL,
   `site` varchar(40) NOT NULL,
   `path` varchar(170) NOT NULL,
+  `page_id` varchar(170) DEFAULT NULL,
   `subscribed` BOOL NOT NULL,
   `unsubscribe_token` varchar(10) NOT NULL,
   `creation_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP(),
@@ -16,6 +17,7 @@ CREATE TABLE comments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX read_index ON comments (`site`, `path`, `creation_date`);
+CREATE INDEX explicit_thread_index ON comments (`site`, `page_id`, `creation_date`);
 
 -- used for rate limiting
 DROP TABLE IF EXISTS ip_addresses;
