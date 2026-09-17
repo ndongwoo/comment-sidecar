@@ -41,6 +41,24 @@ def test_GET_js_with_translations_path_and_site():
     assert_that(js).does_not_contain("{{BASE_PATH}}")
     assert_that(js).contains("/comment-sidecar.php")
 
+def test_GET_js_supports_embed_site_and_page_id():
+    response = requests.get(COMMENT_SIDECAR_URL)
+    assert_that(response.status_code).is_equal_to(200)
+    js = response.text
+
+    assert_that(js).contains("document.currentScript")
+    assert_that(js).contains("SCRIPT_NODE.dataset.site")
+    assert_that(js).contains("SCRIPT_NODE.dataset.pageId")
+    assert_that(js).contains("const SITE = EMBED_SITE || LEGACY_SITE;")
+    assert_that(js).contains("payload.pageId = PAGE_ID;")
+    assert_that(js).contains(
+        "pageId=${encodeURIComponent(PAGE_ID)}"
+    )
+    assert_that(js).contains(
+        "path=${encodeURIComponent(location.pathname)}"
+    )
+
+
 def test_use_gzip():
     response = requests.get(COMMENT_SIDECAR_URL)
     assert_that(response.headers['Content-Encoding']).is_equal_to("gzip")

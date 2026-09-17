@@ -1,6 +1,16 @@
 (function() {
     const BASE_PATH = "{{BASE_PATH}}";
-    const SITE = "{{SITE}}";
+    const LEGACY_SITE = "{{SITE}}";
+
+    const SCRIPT_NODE = document.currentScript;
+    const EMBED_SITE = SCRIPT_NODE && SCRIPT_NODE.dataset
+        ? SCRIPT_NODE.dataset.site
+        : null;
+    const PAGE_ID = SCRIPT_NODE && SCRIPT_NODE.dataset
+        ? SCRIPT_NODE.dataset.pageId
+        : null;
+
+    const SITE = EMBED_SITE || LEGACY_SITE;
 
     function handleResponse(response, formDiv) {
         if (response.status === 201) {
@@ -47,6 +57,9 @@
             path: location.pathname,
             url: formDiv.querySelector(".cs-url").value
         };
+        if (PAGE_ID) {
+            payload.pageId = PAGE_ID;
+        }
         if (parentId !== undefined) {
             payload.replyTo = parentId;
         }
@@ -157,8 +170,12 @@
         return mainFormDiv;
     }
     function loadComments(){
-        const path = encodeURIComponent(location.pathname);
-        return fetch(`${BASE_PATH}?site=${SITE}&path=${path}`)
+        const site = encodeURIComponent(SITE);
+        const threadKey = PAGE_ID
+            ? `pageId=${encodeURIComponent(PAGE_ID)}`
+            : `path=${encodeURIComponent(location.pathname)}`;
+
+        return fetch(`${BASE_PATH}?site=${site}&${threadKey}`)
             .then(response => response.json())
             .then(createNodesForComments);
     }
