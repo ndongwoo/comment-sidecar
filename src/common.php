@@ -21,3 +21,20 @@ function readTranslations(): array  {
 }
 
 class InvalidRequestException extends Exception {}
+
+const INTERNAL_SERVER_ERROR_MESSAGE = "Internal server error.";
+
+function sendJsonErrorResponse(Throwable $ex) {
+    header('Content-Type: application/json; charset=UTF-8');
+
+    if ($ex instanceof InvalidRequestException) {
+        http_response_code(400);
+        $message = $ex->getMessage();
+    } else {
+        http_response_code(500);
+        error_log("Unhandled ".get_class($ex).": ".$ex->getMessage());
+        $message = INTERNAL_SERVER_ERROR_MESSAGE;
+    }
+
+    echo json_encode([ "message" => $message ], JSON_UNESCAPED_UNICODE);
+}

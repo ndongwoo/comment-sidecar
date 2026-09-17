@@ -53,12 +53,7 @@ function main() {
             }
         }
     } catch (Throwable $ex) {
-        if ($ex instanceof InvalidRequestException) {
-            http_response_code(400);
-        } else { //like PDOException
-            http_response_code(500);
-        }
-        echo json_encode([ "message" => $ex->getMessage() ], JSON_UNESCAPED_UNICODE);
+        sendJsonErrorResponse($ex);
     }
 }
 
