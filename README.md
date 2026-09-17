@@ -124,9 +124,19 @@ For backwards compatibility:
 
 Existing installations can therefore adopt explicit page IDs incrementally.
 
+`data-site` is also part of the thread identity. Existing comments keep the exact `site` value that was used when they were created. If an existing installation used a legacy value such as `mydomain.com`, either continue to use that same value in `data-site`, or migrate the stored site key before switching to a different value such as `https://www.example.com`:
+
+```sql
+UPDATE comments
+SET site = 'https://www.example.com'
+WHERE site = 'mydomain.com';
+```
+
+Changing `data-site` without migrating the stored rows creates a different thread namespace, so the old comments will not be found by the new site key.
+
 ### Migrating an existing path-based thread
 
-Adding the database column does not automatically assign page IDs to existing comments. If a page already has comments and you want to switch that page to an explicit `data-page-id`, first back up the database and assign the same page ID to that existing thread, for example:
+Adding the database column does not automatically assign page IDs to existing comments. After keeping the existing site key or migrating it as described above, if a page already has comments and you want to switch that page to an explicit `data-page-id`, first back up the database and assign the same page ID to that existing thread, for example:
 
 ```sql
 UPDATE comments
@@ -139,7 +149,7 @@ After that, the page can move to a different URL while continuing to use `data-p
 
 Optionally, you can include `comment-sidecar-basic.css` in the HTML header to get some basic styling. Or you can simply copy its content to your own CSS file in order to avoid a additional HTTP request.
 
-A complete example for the frontend can be found in [`src/playground.html`](https://github.com/phauer/comment-sidecar/blob/master/src/playground.html).
+A complete example for the frontend can be found in [`src/playground.html`](src/playground.html).
 
 # Import Existing Disqus Comments into Comment-Sidecar
 

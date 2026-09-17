@@ -1,6 +1,6 @@
 <?php
 const LANGUAGE = "en"; # see the `translations` folder for supported languages
-const SITE = "mydomain.com"; # legacy fallback when an embed does not set data-site. Prefer the public site base URL because it is also used to build comment links.
+const SITE = "mydomain.com"; # legacy fallback when an embed does not set data-site. This value is part of thread identity; migrate existing rows before changing it. Prefer a public site base URL for new installs because it is also used to build comment links.
 const E_MAIL_FOR_NOTIFICATIONS = "test@localhost.de"; # admin mail that will receive a notification e-mail after every new comment
 const BASE_URL = "http://localhost/"; # base url of the comment-sidecar backend. can differ from the embedding site.
 const ALLOWED_ACCESSING_SITES = [ "http://localhost:1313", "http://localhost:3000", "http://testdomain.com" ]; # sites that are allowed to access the backend (required when the backend is deployed on a different domain than the embedding site.)
