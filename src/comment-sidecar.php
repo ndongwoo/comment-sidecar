@@ -28,6 +28,7 @@ function main() {
                 }
                 checkForSpam($comment);
                 validatePostedComment($comment);
+                validateReplyTarget($comment);
                 $rateLimiter->checkIpAgainstRateLimit();
                 $createdId = createComment($comment);
                 $rateLimiter->insert_ip_entry();
@@ -154,6 +155,57 @@ function createReplyIdToCommentsMap($results) {
         );
     }
     return $replyToIdToCommentsMap;
+}
+
+function validateReplyTarget($comment) {
+    if (!array_key_exists('replyTo', $comment)
+        || $comment['replyTo'] === null
+        || $comment['replyTo'] === '') {
+        return;
+    }
+
+    $stmt = Database::getConnection()->prepare(
+        "SELECT site, path, page_id
+         FROM comments
+         WHERE id = :reply_to;"
+    );
+    $stmt->bindValue(':reply_to', $comment['replyTo']);
+    $stmt->execute();
+    $parent = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($parent === false) {
+        throw new InvalidRequestException(
+            "The replyTo value '".$comment["replyTo"]."' refers to a not existing id."
+        );
+    }
+
+    if ($parent['site'] !== $comment['site']) {
+        throw new InvalidRequestException(
+            "replyTo must refer to a comment in the same thread."
+        );
+    }
+
+    $pageId = null;
+    if (isset($comment['pageId'])
+        && is_string($comment['pageId'])
+        && trim($comment['pageId']) !== '') {
+        $pageId = $comment['pageId'];
+    }
+
+    if ($pageId !== null) {
+        if ($parent['page_id'] !== $pageId) {
+            throw new InvalidRequestException(
+                "replyTo must refer to a comment in the same thread."
+            );
+        }
+        return;
+    }
+
+    if ($parent['path'] !== $comment['path']) {
+        throw new InvalidRequestException(
+            "replyTo must refer to a comment in the same thread."
+        );
+    }
 }
 
 function createComment($comment) {

@@ -141,3 +141,69 @@ def test_page_id_length_is_validated():
     assert response.status_code == 400
     assert response.json()["message"] == \
         "pageId value exceeds maximal length of 170"
+
+def test_reply_to_same_explicit_thread_is_allowed():
+    site = "https://site-a.example"
+    page_id = "article-a"
+
+    parent_response = post_comment(payload(site, "/article-a/", page_id))
+    parent_id = parent_response.json()["id"]
+
+    child = payload(site, "/article-a-new-url/", page_id)
+    child["replyTo"] = parent_id
+
+    response = post_comment(child)
+    assert response.status_code == 201
+
+
+def test_reply_to_different_page_id_is_rejected():
+    site = "https://site-a.example"
+
+    parent_response = post_comment(payload(site, "/a/", "article-a"))
+    parent_id = parent_response.json()["id"]
+
+    child = payload(site, "/b/", "article-b")
+    child["replyTo"] = parent_id
+
+    clear_rate_limit()
+    response = requests.post(COMMENT_URL, json=child)
+
+    assert response.status_code == 400
+    assert response.json()["message"] == \
+        "replyTo must refer to a comment in the same thread."
+
+
+def test_reply_to_different_site_is_rejected():
+    page_id = "shared-page-id"
+
+    parent_response = post_comment(
+        payload("https://site-a.example", "/a/", page_id)
+    )
+    parent_id = parent_response.json()["id"]
+
+    child = payload("https://site-b.example", "/a/", page_id)
+    child["replyTo"] = parent_id
+
+    clear_rate_limit()
+    response = requests.post(COMMENT_URL, json=child)
+
+    assert response.status_code == 400
+    assert response.json()["message"] == \
+        "replyTo must refer to a comment in the same thread."
+
+
+def test_legacy_reply_to_different_path_is_rejected():
+    site = "https://site-a.example"
+
+    parent_response = post_comment(payload(site, "/legacy-a/"))
+    parent_id = parent_response.json()["id"]
+
+    child = payload(site, "/legacy-b/")
+    child["replyTo"] = parent_id
+
+    clear_rate_limit()
+    response = requests.post(COMMENT_URL, json=child)
+
+    assert response.status_code == 400
+    assert response.json()["message"] == \
+        "replyTo must refer to a comment in the same thread."
