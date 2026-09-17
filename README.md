@@ -173,8 +173,10 @@ poetry shell
 python import/import_disqus_comments.py --help 
 
 # execute the command
-python import/import_disqus_comments.py --disqus_xml_file phauer.xml --site_url https://phauer.com --cs_site_key phauer.com --db_host db_host --db_port 3306 --db_user db_user --db_password db_password --db_name db_name
-``` 
+python import/import_disqus_comments.py --disqus_xml_file phauer.xml --site_url https://phauer.com --cs_site_key https://phauer.com --db_host db_host --db_port 3306 --db_user db_user --db_password db_password --db_name db_name
+```
+
+The importer stores imported author names and comment bodies using the same HTML-escaping invariant as the HTTP comment endpoint, uses `utf8mb4`, and creates imported comments as unsubscribed because the Disqus import does not import notification e-mail addresses. For R2 browser-origin binding, use an absolute HTTP(S) URL for `--cs_site_key`.
 
 # Privacy Policy
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import html
+import secrets
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import List, Dict
@@ -31,7 +33,7 @@ def import_comments(disqus_xml_file: str, site_url: str, cs_site_key: str, db_ho
     print(f"Got {len(comments)} comments from Disqus.")
 
     print("Inserting Disqus comments into comment-sidecar db...")
-    connection = connect(host=db_host, port=db_port, user=db_user, passwd=db_password, db=db_name, charset='utf8', use_unicode=True)
+    connection = connect(host=db_host, port=db_port, user=db_user, passwd=db_password, db=db_name, charset='utf8mb4', use_unicode=True)
     insert_into_db(connection, thread_id_to_url_map, comments, site_url, cs_site_key)
     print("Done.")
 
@@ -45,6 +47,12 @@ class DisqusComment:
     creation_date_timestamp: str
     content: str
 
+def escape_comment_html(value: str) -> str:
+    # Match PHP htmlspecialchars(..., ENT_COMPAT, 'UTF-8'):
+    # escape &, <, > and double quotes, but leave single quotes unchanged.
+    return html.escape(value or "", quote=False).replace('"', '&quot;')
+
+
 def insert_into_db(connection, thread_id_to_url_map: Dict[str, str], comments: List[DisqusComment], site_url: str, cs_site_key: str):
     cur = connection.cursor()
     disqus_id_to_sidecar_id: Dict[str, str] = {}
@@ -56,10 +64,13 @@ def insert_into_db(connection, thread_id_to_url_map: Dict[str, str], comments: L
             reply_to_sidecar_id = None if disqus_comment.reply_to is None else disqus_id_to_sidecar_id[disqus_comment.reply_to]
             url = thread_id_to_url_map[disqus_comment.thread_id]
             path = url.replace(site_url, "")
+            author = escape_comment_html(disqus_comment.author)
+            content = escape_comment_html(disqus_comment.content)
+            unsubscribe_token = secrets.token_hex(32)
             cur.execute(
-                "INSERT INTO comments (author, content, reply_to, site, path, creation_date) VALUES (%s,%s,%s,%s,%s,from_unixtime(%s));",
-                (disqus_comment.author, disqus_comment.content, reply_to_sidecar_id, cs_site_key, path,
-                 disqus_comment.creation_date_timestamp)
+                "INSERT INTO comments (author, content, reply_to, site, path, subscribed, unsubscribe_token, creation_date) VALUES (%s,%s,%s,%s,%s,FALSE,%s,from_unixtime(%s));",
+                (author, content, reply_to_sidecar_id, cs_site_key, path,
+                 unsubscribe_token, disqus_comment.creation_date_timestamp)
             )
             created_id = cur.lastrowid
             disqus_id_to_sidecar_id[disqus_comment.id] = created_id
