@@ -23,14 +23,11 @@
 
     <!-- embed this: -->
     <aside id="comment-sidecar"></aside>
-    <script type="text/javascript">
-        (function() {
-            const scriptNode = document.createElement('script');
-            scriptNode.type = 'text/javascript';
-            scriptNode.async = true;
-            scriptNode.src = 'http://localhost/comment-sidecar-js-delivery.php';
-            (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(scriptNode);
-        })();
+    <script
+        async
+        src="http://localhost/comment-sidecar-js-delivery.php"
+        data-site="http://localhost"
+        data-page-id="playground-example-post">
     </script>
     <!-- until here. -->
 

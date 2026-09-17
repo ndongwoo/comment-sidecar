@@ -56,7 +56,15 @@ Now open [`http://localhost/playground.html`](http://localhost/playground.html) 
 
 Create a MySQL database and note the credentials. 
 
-Create the required tables and the index. Therefore, execute the SQL statements in  [`sql/init.sql`](https://github.com/phauer/comment-sidecar/blob/master/sql/init.sql) 
+For a fresh installation, create the required tables and indexes by executing [`sql/init.sql`](sql/init.sql).
+
+If you are upgrading an existing comment-sidecar installation that already contains comments, **do not run `sql/init.sql` again**, because that script recreates the tables. Back up the database first and run the following migration exactly once instead:
+
+```text
+sql/migrations/001_add_page_id.sql
+```
+
+The migration adds a nullable `page_id` column and its lookup index without deleting existing comments. Existing comments keep `page_id = NULL` and continue to use the historical `site + path` thread lookup.
 
 Copy the whole content of the `src` directory (except `playground.html`) to your web space. You can put it wherever you like. Just remember the path. The following example assumes that all files are put in the root directory `/`.
 
@@ -65,7 +73,7 @@ Open `config.php` and configure it:
 ```php
 <?php
 const LANGUAGE = "en"; # see the `translations` folder for supported languages
-const SITE = "mydomain.com"; # key for this site to identity comments of this site
+const SITE = "mydomain.com"; # legacy fallback if an embed does not provide data-site
 const E_MAIL_FOR_NOTIFICATIONS = "your.email@domain.com"; # admin mail that will receive a notification e-mail after every new comment
 const BASE_URL = "http://mydomain.com/"; # base url of the comment-sidecar backend. can differ from the embedding site.
 const ALLOWED_ACCESSING_SITES = [ "http://domainA.com", "http://domainB.com" ]; # sites that are allowed to access the backend (required when the backend is deployed on a different domain than the embedding site.)
@@ -84,20 +92,49 @@ const RATE_LIMIT_THRESHOLD_SECONDS = "60"; # how long a user (defined by their I
 const UNSUBSCRIBE_DELAY_SECONDS = "2"; # artificially delay responses of the unsubscribe link to delay brute force attacks.
 ```
 
-Open the HTML file where you like to embed the comments. Insert the following snippet and set the correct path of the `comment-sidecar-js-delivery.php` file.
+Open the HTML file where you would like to embed the comments. The preferred embed format is:
 
 ```html
 <aside id="comment-sidecar"></aside>
-<script type="text/javascript">
-    (function() {
-        const scriptNode = document.createElement('script');
-        scriptNode.type = 'text/javascript';
-        scriptNode.async = true;
-        scriptNode.src = 'http://domainC.com/comment-sidecar-js-delivery.php'; // adjust to the correct path
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(scriptNode);
-    })();
+<script
+    async
+    src="https://comments.example.com/comment-sidecar-js-delivery.php"
+    data-site="https://www.example.com"
+    data-page-id="article-2026-001">
 </script>
 ```
+
+`data-site` identifies the site that owns the comment thread. When notification links are used, a public site base URL such as `https://www.example.com` is recommended because comment-sidecar combines the site value with the current page path when it builds links.
+
+`data-page-id` is a stable identifier for the page's comment thread. It should not change when the page URL changes. For example, a page may move from `/blog/old-title/` to `/articles/new-title/` while retaining:
+
+```html
+data-page-id="article-2026-001"
+```
+
+Comments posted before and after that URL change will then belong to the same explicit thread.
+
+The current `location.pathname` is still sent when a comment is posted. This lets comment-sidecar build links to the current page while `data-page-id` provides the stable thread identity.
+
+For backwards compatibility:
+
+- if `data-page-id` is omitted, comment-sidecar uses the historical `site + location.pathname` thread key;
+- if `data-site` is omitted, the `SITE` value from `config.php` is used.
+
+Existing installations can therefore adopt explicit page IDs incrementally.
+
+### Migrating an existing path-based thread
+
+Adding the database column does not automatically assign page IDs to existing comments. If a page already has comments and you want to switch that page to an explicit `data-page-id`, first back up the database and assign the same page ID to that existing thread, for example:
+
+```sql
+UPDATE comments
+SET page_id = 'article-2026-001'
+WHERE site = 'https://www.example.com'
+  AND path = '/blog/old-title/';
+```
+
+After that, the page can move to a different URL while continuing to use `data-page-id="article-2026-001"`.
 
 Optionally, you can include `comment-sidecar-basic.css` in the HTML header to get some basic styling. Or you can simply copy its content to your own CSS file in order to avoid a additional HTTP request.
 
