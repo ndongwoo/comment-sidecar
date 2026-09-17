@@ -67,7 +67,7 @@ sql/migrations/002_widen_site.sql
 
 The first migration adds a nullable `page_id` column and its lookup index. The second widens `site` so public site base URLs up to 255 characters can be used. Existing comments are preserved, keep `page_id = NULL`, and continue to use the historical `site + path` thread lookup until explicitly migrated.
 
-Copy the whole content of the `src` directory (except `playground.html`) to your web space. You can put it wherever you like. Just remember the path. The following example assumes that all files are put in the root directory `/`.
+Copy the application files from the `src` directory to your web space. Do not deploy the playground HTML files. If you are upgrading an older installation, also delete any previously deployed `phpinfo.php`; it is a diagnostic endpoint and should not be exposed on a production server. The following example assumes that the application files are put in the root directory `/`.
 
 Open `config.php` and configure it:
 
