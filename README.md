@@ -7,7 +7,7 @@ comment-sidecar is a **lightweight, tracking-free, self-hosted comment service**
 # Features
 
 - Tracking-free and fast. The comment-sidecar only needs two additional requests. Contrary, Disqus leads to **110 additional requests**. Read [here](http://donw.io/post/github-comments/) for more details about Disqus' tracking greed and performance impact.
-- Privacy and data protection. comment-sidecar only saves the data that is required. The e-mail is optional, only used for notifications and will be deleted if the users unsubscribes from notifications. The IP is only saved for a short amount of time and can't be traced back to the e-mail. It's only used to enable rate limiting. 
+- Privacy and data protection. comment-sidecar only saves the data that is required. The e-mail is optional, only used for notifications and will be deleted if the users unsubscribes from notifications. For rate limiting, the application database stores only a short-lived keyed HMAC of the client IP rather than the raw IP. Web-server or hosting-provider access logs are separate and may still contain client IP addresses depending on server configuration.
 - Easy to integrate. Just a simple Javascript call. This makes it easy to use the comment-sidecar in conjunction with static site generators like **Hugo** or Jekyll. You don't have to integrate PHP code in the generated HTML files.
 - Lightweight: No additional PHP or JavaScript dependencies. Just drop the files on your web server and you are good to go.
 - No performance impact on TTFB (Time To First Byte), because the comments are loaded asynchronously.
@@ -20,7 +20,7 @@ comment-sidecar is a **lightweight, tracking-free, self-hosted comment service**
 - Multi-language support (pull requests adding more languages are highly welcome).
 - Customizable form HTML
 - Import existing Disqus comments.
-- Simple rate limiting based on the IP address (`$_SERVER['REMOTE_ADDR']`)
+- Simple rate limiting based on a keyed HMAC of `$_SERVER['REMOTE_ADDR']`; the application rate-limit table does not store the raw IP.
 
 # What's Different to Disqus
 
@@ -64,9 +64,10 @@ If you are upgrading an existing comment-sidecar installation that already conta
 sql/migrations/001_add_page_id.sql
 sql/migrations/002_widen_site.sql
 sql/migrations/003_widen_unsubscribe_token.sql
+sql/migrations/004_pseudonymize_rate_limit_ips.sql
 ```
 
-The first migration adds a nullable `page_id` column and its lookup index. The second widens `site` so public site base URLs up to 255 characters can be used. The third widens the unsubscribe-token column before R2 starts generating 64-character cryptographically secure tokens. Existing 10-character unsubscribe tokens remain valid. If you already completed the R1.5 migrations, run only `003_widen_unsubscribe_token.sql` before deploying the R2 PHP files.
+The first migration adds a nullable `page_id` column and its lookup index. The second widens `site` so public site base URLs up to 255 characters can be used. The third widens the unsubscribe-token column before R2 starts generating 64-character cryptographically secure tokens. Existing 10-character unsubscribe tokens remain valid. The fourth migration discards the ephemeral legacy rate-limit rows containing raw IP addresses, renames the column to `ip_hash`, and makes it unique so rate-limit reservation is atomic. If you already completed the earlier migrations, run only the migrations you have not yet applied, in numeric order, before deploying the matching PHP files.
 
 Copy the application files from the `src` directory to your web space. Do not deploy the playground HTML files. If you are upgrading an older installation, also delete any previously deployed `phpinfo.php`; it is a diagnostic endpoint and should not be exposed on a production server. The following example assumes that the application files are put in the root directory `/`.
 
@@ -90,7 +91,8 @@ const FORM_TEMPLATE = "bootstrap-default"; # see the `form-templates` folder for
 const BUTTON_CSS_CLASSES_ADD_COMMENT = "btn btn-link"; # css classes for the button. bootstrap: "btn btn-link". bulma: "button is-link"
 const BUTTON_CSS_CLASSES_REPLY = "btn btn-link"; # css classes for the button. bootstrap: "btn btn-link". bulma: "button is-link is-small"
 
-const RATE_LIMIT_THRESHOLD_SECONDS = "60"; # how long a user (defined by their IP) have to wait until they can comment again
+const RATE_LIMIT_THRESHOLD_SECONDS = "60"; # how long a user (defined by their pseudonymous IP hash) has to wait until they can comment again
+const RATE_LIMIT_HASH_KEY = "replace-with-a-long-random-secret"; # secret HMAC key; keep private and stable across deployments
 const UNSUBSCRIBE_DELAY_SECONDS = "2"; # artificially delay responses of the unsubscribe link to delay brute force attacks.
 ```
 

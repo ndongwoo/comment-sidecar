@@ -27,3 +27,14 @@ def test_legacy_random_token_generator_is_not_shipped():
     source = (SRC_DIR / "comment-sidecar.php").read_text(encoding="utf-8")
     assert "str_shuffle(" not in source
     assert "generateRandomString(" not in source
+
+
+def test_rate_limit_table_does_not_store_raw_ip():
+    php_source = (SRC_DIR / "comment-sidecar.php").read_text(encoding="utf-8")
+    schema = (ROOT_DIR / "sql" / "init.sql").read_text(encoding="utf-8")
+
+    assert "hash_hmac('sha256'" in php_source
+    assert "INSERT INTO ip_addresses (ip_hash)" in php_source
+    assert "INSERT INTO ip_addresses (ip)" not in php_source
+    assert "`ip_hash` char(64)" in schema
+    assert "`ip` varchar(45)" not in schema

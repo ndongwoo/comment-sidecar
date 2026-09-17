@@ -19,5 +19,6 @@ const BUTTON_CSS_CLASSES_REPLY = "btn btn-link"; # css classes for the button. b
 //const BUTTON_CSS_CLASSES_REPLY = "button is-link is-small";
 
 # mind, that the following line is temporarily changed by the integration test
-const RATE_LIMIT_THRESHOLD_SECONDS = "0"; # how long a user (defined by their IP) have to wait until they can comment again
+const RATE_LIMIT_THRESHOLD_SECONDS = "0"; # how long a user (defined by their pseudonymous IP hash) has to wait until they can comment again
+const RATE_LIMIT_HASH_KEY = "test-only-change-this-to-a-long-random-secret-before-production"; # secret HMAC key used to pseudonymize rate-limit IP addresses
 const UNSUBSCRIBE_DELAY_SECONDS = "0"; # artificially delay responses of the unsubscribe link to delay brute force attacks.

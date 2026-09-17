@@ -23,6 +23,6 @@ CREATE INDEX explicit_thread_index ON comments (`site`, `page_id`, `creation_dat
 DROP TABLE IF EXISTS ip_addresses;
 
 CREATE TABLE ip_addresses (
-    `ip` varchar(45) NOT NULL,
+    `ip_hash` char(64) NOT NULL PRIMARY KEY,
     `creation_date` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

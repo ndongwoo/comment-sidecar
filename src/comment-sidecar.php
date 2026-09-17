@@ -29,9 +29,22 @@ function main() {
                 checkForSpam($comment);
                 validatePostedComment($comment);
                 validateReplyTarget($comment);
-                $rateLimiter->checkIpAgainstRateLimit();
-                $createdId = createComment($comment);
-                $rateLimiter->insert_ip_entry();
+
+                $rateLimiter->cleanUpExpiredRequests();
+
+                $connection = Database::getConnection();
+                $connection->beginTransaction();
+                try {
+                    $rateLimiter->reserveRequest();
+                    $createdId = createComment($comment);
+                    $connection->commit();
+                } catch (Throwable $ex) {
+                    if ($connection->inTransaction()) {
+                        $connection->rollBack();
+                    }
+                    throw $ex;
+                }
+
                 sendNotificationToAdminViaMail($comment);
                 if (isset($comment["replyTo"])){
                     sendNotificationToParentAuthorViaMail($comment);
@@ -388,23 +401,7 @@ function find_parent_author_email($parentCommentId) {
 }
 
 class RateLimiter {
-    function checkIpAgainstRateLimit() {
-        $ip = $_SERVER['REMOTE_ADDR'];
-        $this->clean_up_outdated_ips();
-        if ($this->ip_entry_exists($ip)) {
-            throw new InvalidRequestException("You have exceeded the maximal number of comments within a time frame.");
-        }
-    }
-
-    private function ip_entry_exists($ip) {
-        $stmt = Database::getConnection()->prepare("SELECT count(ip) as ip_count FROM ip_addresses WHERE ip = :ip;");
-        $stmt->bindParam(":ip", $ip);
-        $stmt->execute();
-        $count =  $stmt->fetchColumn();
-        return $count > 0;
-    }
-
-    private function clean_up_outdated_ips() {
+    public function cleanUpExpiredRequests() {
         $rateLimitThreshold = max(0, (int) RATE_LIMIT_THRESHOLD_SECONDS);
         $stmt = Database::getConnection()->prepare(
             "DELETE FROM ip_addresses WHERE creation_date < DATE_SUB(NOW(6), INTERVAL $rateLimitThreshold SECOND);"
@@ -412,11 +409,34 @@ class RateLimiter {
         $stmt->execute();
     }
 
-    public function insert_ip_entry() {
-        $stmt = Database::getConnection()->prepare("INSERT INTO ip_addresses (ip) VALUES (:ip);");
-        $stmt->bindParam(':ip', $_SERVER['REMOTE_ADDR']);
-        $stmt->execute();
+    public function reserveRequest() {
+        $ipHash = $this->hashRemoteAddress();
+
+        try {
+            $stmt = Database::getConnection()->prepare(
+                "INSERT INTO ip_addresses (ip_hash) VALUES (:ip_hash);"
+            );
+            $stmt->bindParam(':ip_hash', $ipHash);
+            $stmt->execute();
+        } catch (PDOException $ex) {
+            if (($ex->errorInfo[1] ?? null) === 1062) {
+                throw new InvalidRequestException(
+                    "You have exceeded the maximal number of comments within a time frame."
+                );
+            }
+            throw $ex;
+        }
     }
+
+    private function hashRemoteAddress(): string {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        if (!is_string($ip) || trim($ip) === '') {
+            throw new RuntimeException("REMOTE_ADDR is not available.");
+        }
+
+        return hash_hmac('sha256', $ip, RATE_LIMIT_HASH_KEY);
+    }
+
 }
 
 class Database {
