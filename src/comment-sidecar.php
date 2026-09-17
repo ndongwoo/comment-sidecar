@@ -28,6 +28,7 @@ function main() {
                 }
                 checkForSpam($comment);
                 validatePostedComment($comment);
+                validateBrowserOriginForSite($comment);
                 validateReplyTarget($comment);
 
                 $rateLimiter->cleanUpExpiredRequests();
@@ -77,6 +78,62 @@ function setCORSHeader() {
         header('Access-Control-Allow-Methods: GET, POST');
         header('Access-Control-Allow-Headers: Content-Type');
     }
+}
+
+function validateBrowserOriginForSite($comment) {
+    $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? null;
+
+    // Preserve direct/server-to-server clients that do not send Origin.
+    // Origin binding is a browser isolation control, not API authentication.
+    if ($httpOrigin === null || trim($httpOrigin) === '') {
+        return;
+    }
+
+    if (!in_array($httpOrigin, ALLOWED_ACCESSING_SITES, true)) {
+        throw new ForbiddenRequestException(
+            "Origin is not allowed to write comments."
+        );
+    }
+
+    $requestOrigin = normalizeHttpOrigin($httpOrigin);
+    $siteOrigin = normalizeHttpOrigin($comment['site']);
+
+    if ($requestOrigin === null
+        || $siteOrigin === null
+        || $requestOrigin !== $siteOrigin) {
+        throw new ForbiddenRequestException(
+            "Origin is not allowed to write to this site."
+        );
+    }
+}
+
+function normalizeHttpOrigin($value) {
+    if (!is_string($value) || trim($value) === '') {
+        return null;
+    }
+
+    $parts = parse_url($value);
+    if ($parts === false
+        || !isset($parts['scheme'])
+        || !isset($parts['host'])) {
+        return null;
+    }
+
+    $scheme = strtolower($parts['scheme']);
+    if ($scheme !== 'http' && $scheme !== 'https') {
+        return null;
+    }
+
+    $host = strtolower($parts['host']);
+    $port = $parts['port'] ?? null;
+
+    if (($scheme === 'http' && $port === 80)
+        || ($scheme === 'https' && $port === 443)) {
+        $port = null;
+    }
+
+    return $scheme . '://' . $host
+        . ($port === null ? '' : ':' . $port);
 }
 
 function isInvalidReplyToId($ex){

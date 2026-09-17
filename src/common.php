@@ -21,13 +21,17 @@ function readTranslations(): array  {
 }
 
 class InvalidRequestException extends Exception {}
+class ForbiddenRequestException extends Exception {}
 
 const INTERNAL_SERVER_ERROR_MESSAGE = "Internal server error.";
 
 function sendJsonErrorResponse(Throwable $ex) {
     header('Content-Type: application/json; charset=UTF-8');
 
-    if ($ex instanceof InvalidRequestException) {
+    if ($ex instanceof ForbiddenRequestException) {
+        http_response_code(403);
+        $message = $ex->getMessage();
+    } elseif ($ex instanceof InvalidRequestException) {
         http_response_code(400);
         $message = $ex->getMessage();
     } else {

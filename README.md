@@ -76,10 +76,10 @@ Open `config.php` and configure it:
 ```php
 <?php
 const LANGUAGE = "en"; # see the `translations` folder for supported languages
-const SITE = "mydomain.com"; # legacy fallback if an embed does not provide data-site
+const SITE = "https://www.example.com"; # legacy fallback if an embed does not provide data-site; browser writes require an absolute http(s) URL
 const E_MAIL_FOR_NOTIFICATIONS = "your.email@domain.com"; # admin mail that will receive a notification e-mail after every new comment
 const BASE_URL = "http://mydomain.com/"; # base url of the comment-sidecar backend. can differ from the embedding site.
-const ALLOWED_ACCESSING_SITES = [ "http://domainA.com", "http://domainB.com" ]; # sites that are allowed to access the backend (required when the backend is deployed on a different domain than the embedding site.)
+const ALLOWED_ACCESSING_SITES = [ "https://site-a.example", "https://site-b.example" ]; # browser origins allowed to access the backend; POST Origin must also match the origin of data-site/SITE
 
 const DB_HOST = 'localhost'; # to access from host system, use 127.0.0.1
 const DB_NAME = 'wb3d23s';
@@ -108,7 +108,9 @@ Open the HTML file where you would like to embed the comments. The preferred emb
 </script>
 ```
 
-`data-site` identifies the site that owns the comment thread. When notification links are used, a public site base URL such as `https://www.example.com` is recommended because comment-sidecar combines the site value with the current page path when it builds links. The value may be up to 255 characters.
+`data-site` identifies the site that owns the comment thread. When notification links are used, use an absolute public HTTP(S) site URL such as `https://www.example.com` because comment-sidecar combines the site value with the current page path when it builds links. The value may be up to 255 characters.
+
+For browser POST requests, R2 also treats the HTTP `Origin` header as a namespace-isolation signal. The origin must be present in `ALLOWED_ACCESSING_SITES`, and its normalized `scheme://host[:port]` must match the origin of `data-site` (or the fallback `SITE`). This prevents one allowed browser site from posting into another site's comment namespace. Requests without an `Origin` header remain supported for direct/server-to-server clients; therefore this control is browser isolation, not API authentication.
 
 `data-page-id` is a stable identifier for the page's comment thread. It should not change when the page URL changes. For example, a page may move from `/blog/old-title/` to `/articles/new-title/` while retaining:
 
@@ -127,7 +129,9 @@ For backwards compatibility:
 
 Existing installations can therefore adopt explicit page IDs incrementally.
 
-`data-site` is also part of the thread identity. Existing comments keep the exact `site` value that was used when they were created. If an existing installation used a legacy value such as `mydomain.com`, either continue to use that same value in `data-site`, or migrate the stored site key before switching to a different value such as `https://www.example.com`:
+R2 browser-origin binding requires `data-site`/`SITE` to be an absolute HTTP(S) URL for browser writes. If an older installation used a schemeless site key such as `mydomain.com`, migrate that key to the public URL before enabling the new R2 PHP code for browser commenting.
+
+`data-site` is also part of the thread identity. Existing comments keep the exact `site` value that was used when they were created. If an existing installation used a legacy value such as `mydomain.com`, migrate the stored site key before switching to a different value such as `https://www.example.com`:
 
 ```sql
 UPDATE comments
