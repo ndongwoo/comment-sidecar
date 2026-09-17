@@ -27,6 +27,100 @@ function readTranslations(): array  {
 class InvalidRequestException extends Exception {}
 class ForbiddenRequestException extends Exception {}
 
+function ipMatchesCidr($ip, $cidr): bool {
+    if (!is_string($ip) || trim($ip) === '') {
+        throw new InvalidArgumentException("IP address must be a non-empty string.");
+    }
+    if (!is_string($cidr) || trim($cidr) === '') {
+        throw new InvalidArgumentException("CIDR must be a non-empty string.");
+    }
+
+    $parts = explode('/', trim($cidr), 2);
+    if (count($parts) !== 2) {
+        throw new InvalidArgumentException("CIDR prefix is required.");
+    }
+
+    [$network, $prefixText] = $parts;
+    $network = trim($network);
+    $prefixText = trim($prefixText);
+
+    if (preg_match('/^[0-9]+$/D', $prefixText) !== 1) {
+        throw new InvalidArgumentException("CIDR prefix must be numeric.");
+    }
+
+    $packedIp = inet_pton(trim($ip));
+    $packedNetwork = inet_pton($network);
+
+    if ($packedIp === false) {
+        throw new InvalidArgumentException("Invalid IP address.");
+    }
+    if ($packedNetwork === false) {
+        throw new InvalidArgumentException("Invalid CIDR network address.");
+    }
+
+    if (strlen($packedIp) !== strlen($packedNetwork)) {
+        return false;
+    }
+
+    $maxBits = strlen($packedIp) * 8;
+    $prefix = (int) $prefixText;
+    if ($prefix < 0 || $prefix > $maxBits) {
+        throw new InvalidArgumentException("CIDR prefix is out of range.");
+    }
+
+    $fullBytes = intdiv($prefix, 8);
+    $remainingBits = $prefix % 8;
+
+    if ($fullBytes > 0
+        && substr($packedIp, 0, $fullBytes)
+            !== substr($packedNetwork, 0, $fullBytes)) {
+        return false;
+    }
+
+    if ($remainingBits === 0) {
+        return true;
+    }
+
+    $mask = (0xFF << (8 - $remainingBits)) & 0xFF;
+
+    return (ord($packedIp[$fullBytes]) & $mask)
+        === (ord($packedNetwork[$fullBytes]) & $mask);
+}
+
+function enforceClientIpBlocklist() {
+    $clientIp = $_SERVER['REMOTE_ADDR'] ?? null;
+
+    if (!is_string($clientIp)
+        || trim($clientIp) === ''
+        || inet_pton(trim($clientIp)) === false) {
+        throw new RuntimeException("Client IP address is unavailable.");
+    }
+
+    foreach (BLOCKED_IP_CIDRS as $cidr) {
+        if (!is_string($cidr)) {
+            throw new RuntimeException(
+                "BLOCKED_IP_CIDRS contains an invalid entry."
+            );
+        }
+
+        try {
+            $blocked = ipMatchesCidr($clientIp, $cidr);
+        } catch (InvalidArgumentException $ex) {
+            throw new RuntimeException(
+                "BLOCKED_IP_CIDRS contains an invalid CIDR.",
+                0,
+                $ex
+            );
+        }
+
+        if ($blocked) {
+            throw new ForbiddenRequestException(
+                "Comment posting is not allowed from this network."
+            );
+        }
+    }
+}
+
 const INTERNAL_SERVER_ERROR_MESSAGE = "Internal server error.";
 
 function sendJsonErrorResponse(Throwable $ex) {

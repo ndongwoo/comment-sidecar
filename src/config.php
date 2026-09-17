@@ -4,6 +4,7 @@ const SITE = "http://testdomain.com"; # legacy fallback when an embed does not s
 const E_MAIL_FOR_NOTIFICATIONS = "test@localhost.de"; # admin mail that will receive a notification e-mail after every new comment
 const BASE_URL = "http://localhost/"; # base url of the comment-sidecar backend. can differ from the embedding site.
 const ALLOWED_ACCESSING_SITES = [ "http://localhost:1313", "http://localhost:3000", "http://testdomain.com" ]; # browser origins allowed to access the backend. A POST with Origin must also claim a site whose normalized origin matches that Origin.
+const BLOCKED_IP_CIDRS = []; # optional POST denylist in CIDR notation, e.g. [ "77.238.0.0/16", "87.199.0.0/16" ]
 
 const DB_HOST = 'mysql'; # to access from host system, use 127.0.0.1
 const DB_NAME = 'comment-sidecar';

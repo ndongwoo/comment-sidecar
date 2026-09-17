@@ -22,6 +22,7 @@ function main() {
                 break;
             }
             case 'POST': {
+                enforceClientIpBlocklist();
                 $comment = json_decode(file_get_contents('php://input'), true);
                 if (!is_array($comment)) {
                     throw new InvalidRequestException("Request body must contain a valid JSON object.");

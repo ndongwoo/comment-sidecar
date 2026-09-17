@@ -80,6 +80,11 @@ const SITE = "https://www.example.com"; # legacy fallback if an embed does not p
 const E_MAIL_FOR_NOTIFICATIONS = "your.email@domain.com"; # admin mail that will receive a notification e-mail after every new comment
 const BASE_URL = "http://mydomain.com/"; # base url of the comment-sidecar backend. can differ from the embedding site.
 const ALLOWED_ACCESSING_SITES = [ "https://site-a.example", "https://site-b.example" ]; # browser origins allowed to access the backend; POST Origin must also match the origin of data-site/SITE
+const BLOCKED_IP_CIDRS = [
+    "77.238.0.0/16",
+    "87.199.0.0/16",
+    "89.110.0.0/16",
+]; # optional POST denylist; keep [] if unused
 
 const DB_HOST = 'localhost'; # to access from host system, use 127.0.0.1
 const DB_NAME = 'wb3d23s';
@@ -95,6 +100,10 @@ const RATE_LIMIT_THRESHOLD_SECONDS = "60"; # how long a user (defined by their p
 const RATE_LIMIT_HASH_KEY = "replace-with-a-long-random-secret"; # secret HMAC key; keep private and stable across deployments
 const UNSUBSCRIBE_DELAY_SECONDS = "2"; # artificially delay responses of the unsubscribe link to delay brute force attacks.
 ```
+
+`BLOCKED_IP_CIDRS` is an optional server-side denylist for comment POSTs. Use standard CIDR notation rather than wildcard notation. For example, `77.238.*.*`, `87.199.*.*`, and `89.110.*.*` become `77.238.0.0/16`, `87.199.0.0/16`, and `89.110.0.0/16`. A `/16` covers 65,536 IPv4 addresses, so only block a whole range when that breadth is intentional. IPv6 CIDRs are also supported.
+
+The denylist compares the request's `REMOTE_ADDR` in memory before the comment body is processed. It does not add raw IP storage to the application database and deliberately does not trust `X-Forwarded-For` by default.
 
 Open the HTML file where you would like to embed the comments. The preferred embed format is:
 
