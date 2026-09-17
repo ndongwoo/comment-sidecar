@@ -58,14 +58,15 @@ Create a MySQL database and note the credentials.
 
 For a fresh installation, create the required tables and indexes by executing [`sql/init.sql`](sql/init.sql).
 
-If you are upgrading an existing comment-sidecar installation that already contains comments, **do not run `sql/init.sql` again**, because that script recreates the tables. Back up the database first and run the R1.5 migrations exactly once, in this order:
+If you are upgrading an existing comment-sidecar installation that already contains comments, **do not run `sql/init.sql` again**, because that script recreates the tables. Back up the database first and run the applicable migrations exactly once, in order:
 
 ```text
 sql/migrations/001_add_page_id.sql
 sql/migrations/002_widen_site.sql
+sql/migrations/003_widen_unsubscribe_token.sql
 ```
 
-The first migration adds a nullable `page_id` column and its lookup index. The second widens `site` so public site base URLs up to 255 characters can be used. Existing comments are preserved, keep `page_id = NULL`, and continue to use the historical `site + path` thread lookup until explicitly migrated.
+The first migration adds a nullable `page_id` column and its lookup index. The second widens `site` so public site base URLs up to 255 characters can be used. The third widens the unsubscribe-token column before R2 starts generating 64-character cryptographically secure tokens. Existing 10-character unsubscribe tokens remain valid. If you already completed the R1.5 migrations, run only `003_widen_unsubscribe_token.sql` before deploying the R2 PHP files.
 
 Copy the application files from the `src` directory to your web space. Do not deploy the playground HTML files. If you are upgrading an older installation, also delete any previously deployed `phpinfo.php`; it is a diagnostic endpoint and should not be exposed on a production server. The following example assumes that the application files are put in the root directory `/`.
 

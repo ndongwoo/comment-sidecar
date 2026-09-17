@@ -229,7 +229,7 @@ function createComment($comment) {
         $stmt->bindParam(':path', $comment["path"]);
         $stmt->bindParam(':page_id', $pageId);
         $stmt->bindValue(':subscribed', $subscribed, PDO::PARAM_BOOL);
-        $stmt->bindValue(':unsubscribe_token', generateRandomString(10));
+        $stmt->bindValue(':unsubscribe_token', generateUnsubscribeToken());
         $stmt->execute();
         $createdId = Database::getConnection()->lastInsertId();
         return $createdId;
@@ -241,8 +241,8 @@ function createComment($comment) {
     }
 }
 
-function generateRandomString($length = 10) {
-    return substr(str_shuffle(str_repeat($x='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', ceil($length/strlen($x)) )),1,$length);
+function generateUnsubscribeToken(): string {
+    return bin2hex(random_bytes(32));
 }
 
 function checkForSpam($comment) {
