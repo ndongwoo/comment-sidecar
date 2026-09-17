@@ -129,8 +129,8 @@ function createReplyIdToCommentsMap($results) {
 function createComment($comment) {
     try {
         $stmt = Database::getConnection()->prepare("INSERT INTO comments (author, email, content, reply_to, site, path, subscribed, unsubscribe_token) VALUES (:author, :email, :content, :reply_to, :site, :path, :subscribed, :unsubscribe_token);");
-        $author = htmlspecialchars($comment["author"], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        $content = htmlspecialchars($comment["content"], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $author = htmlspecialchars($comment["author"], ENT_COMPAT | ENT_SUBSTITUTE, 'UTF-8');
+        $content = htmlspecialchars($comment["content"], ENT_COMPAT | ENT_SUBSTITUTE, 'UTF-8');
         $email = $comment["email"] ?? null;
         $replyTo = $comment["replyTo"] ?? null;
         $subscribed = ($email !== null && trim($email) !== '');
@@ -221,7 +221,7 @@ function sendNotificationToAdminViaMail($comment) {
     $message .= "URL: $commentUrl\n";
     $message .= "Message: " . $comment["content"] . "\n";
     $subject = "Comment by $author on $path";
-    sendMail(E_MAIL_FOR_NOTIFICATIONS, $comment['author'], $comment['email'], $message, $subject);
+    sendMail(E_MAIL_FOR_NOTIFICATIONS, $comment['author'], $comment['email'] ?? null, $message, $subject);
 }
 
 function sendNotificationToParentAuthorViaMail($new_comment){
@@ -250,8 +250,8 @@ function createCommentUrl($comment): string {
 }
 
 function sendMail($toMail, $fromName, $fromEmail, $message, $subject){
-    $from = (isset($fromEmail) and !empty($fromEmail)) ? "$fromName<${fromEmail}>" : "$fromName";
-    $headers = "From: ${from}\n";
+    $from = (isset($fromEmail) and !empty($fromEmail)) ? "$fromName<{$fromEmail}>" : "$fromName";
+    $headers = "From: {$from}\n";
     $headers .= "Mime-Version: 1.0\n";
     $headers .= "Content-Type: text/plain; charset=UTF-8\n";
     $headers .= "Content-Transfer-Encoding: 8bit\n";
