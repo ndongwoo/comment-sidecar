@@ -267,6 +267,30 @@ function validatePostedComment($comment){
     checkMaxLength($comment, 'site', 255);
     checkMaxLength($comment, 'path', 170);
     checkMaxLength($comment, 'pageId', 170);
+    checkNoMailHeaderNewlines($comment, 'author');
+    checkNoMailHeaderNewlines($comment, 'email');
+    checkNoMailHeaderNewlines($comment, 'path');
+}
+
+function checkNoMailHeaderNewlines($comment, $fieldName) {
+    if (!array_key_exists($fieldName, $comment) || $comment[$fieldName] === null) {
+        return;
+    }
+
+    if (!is_string($comment[$fieldName])) {
+        return;
+    }
+
+    if (containsMailHeaderNewline($comment[$fieldName])) {
+        throw new InvalidRequestException(
+            "$fieldName must not contain line breaks."
+        );
+    }
+}
+
+function containsMailHeaderNewline($value): bool {
+    return is_string($value)
+        && (str_contains($value, "\r") || str_contains($value, "\n"));
 }
 
 function checkMaxLength($comment, $fieldName, $maxLength) {
@@ -339,6 +363,13 @@ function createCommentUrl($comment): string {
 }
 
 function sendMail($toMail, $fromName, $fromEmail, $message, $subject){
+    foreach ([$toMail, $fromName, $fromEmail, $subject] as $headerValue) {
+        if ($headerValue !== null && containsMailHeaderNewline($headerValue)) {
+            error_log("Blocked notification mail with an unsafe header value.");
+            return;
+        }
+    }
+
     $from = (isset($fromEmail) and !empty($fromEmail)) ? "$fromName<{$fromEmail}>" : "$fromName";
     $headers = "From: {$from}\n";
     $headers .= "Mime-Version: 1.0\n";
