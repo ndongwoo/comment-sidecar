@@ -12,11 +12,15 @@ function connect() {
 function readTranslations(): array  {
     $translationFile = __DIR__ . '/translations/'. LANGUAGE .'.php';
     if (!file_exists($translationFile)) {
-        http_response_code(500);
-        echo "Can't find translation file $translationFile";
-        return [];
+        throw new RuntimeException("Translation resource is unavailable.");
     }
+
     include $translationFile;
+
+    if (!isset($translations) || !is_array($translations)) {
+        throw new RuntimeException("Translation resource is invalid.");
+    }
+
     return $translations;
 }
 

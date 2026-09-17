@@ -222,3 +222,45 @@ def test_long_public_site_url_is_supported():
     response = get_by_page_id(site, page_id)
     assert response.status_code == 200
     assert len(response.json()) == 1
+
+
+def test_legacy_reply_to_explicit_parent_same_path_is_rejected():
+    site = "https://site-a.example"
+    path = "/same-path/"
+
+    parent_response = post_comment(payload(site, path, "explicit-thread"))
+    parent_id = parent_response.json()["id"]
+
+    child = payload(site, path)
+    child["replyTo"] = parent_id
+
+    clear_rate_limit()
+    response = requests.post(COMMENT_URL, json=child)
+
+    assert response.status_code == 400
+    assert response.json()["message"] == (
+        "replyTo must refer to a comment in the same thread."
+    )
+
+
+def test_legacy_path_lookup_excludes_explicit_thread_same_path():
+    site = "https://site-a.example"
+    path = "/shared-current-path/"
+
+    explicit = payload(site, path, "explicit-thread")
+    explicit["content"] = "explicit-comment"
+    post_comment(explicit)
+
+    legacy = payload(site, path)
+    legacy["content"] = "legacy-comment"
+    post_comment(legacy)
+
+    response = requests.get(
+        COMMENT_URL,
+        params={"site": site, "path": path},
+    )
+
+    assert response.status_code == 200
+    comments = response.json()
+    assert len(comments) == 1
+    assert comments[0]["content"] == "legacy-comment"

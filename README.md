@@ -190,7 +190,7 @@ When using comment-sidecar, you might add the following to your declaration:
 >
 > You can contact us, if you want us to remove your e-mail or the whole comment from our database.
 >
-> Additionally, we store your IP address for a short amount of time (usually a couple of days). Your IP is not stored together with your name, e-mail or comment and can never be traced back to your personal data. We only use the IP to implement rate limiting and spam protection. After these short time, we will remove your IP from our database.
+> Additionally, for rate limiting we store a short-lived keyed HMAC-SHA256 value derived from your IP address. The comment-sidecar application rate-limit table does not store the raw IP address, and the pseudonymous value is stored separately from your comment data. The retention window is controlled by the site's rate-limit configuration. Web-server or hosting-provider access logs are separate and may still contain your IP address depending on the server configuration.
 
 # Development
 

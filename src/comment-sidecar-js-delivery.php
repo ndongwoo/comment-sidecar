@@ -5,11 +5,13 @@ function deliverJsWithTranslationsAndPath(){
     header('Content-Type: application/javascript; charset=UTF-8');
     $jsTemplate = __DIR__ . '/comment-sidecar.js';
     if (!file_exists($jsTemplate)) {
-        http_response_code(500);
-        echo "Can't find javascript template file $jsTemplate";
-        return;
+        throw new RuntimeException("JavaScript template is unavailable.");
     }
+
     $page = file_get_contents($jsTemplate);
+    if ($page === false) {
+        throw new RuntimeException("JavaScript template could not be read.");
+    }
 
     // poor man's templating (but at least I prevent nice tooling in the js and html file)
     $page = str_replace("{{FORM_HTML}}", readFormTemplate(), $page);
@@ -24,18 +26,30 @@ function deliverJsWithTranslationsAndPath(){
     echo $page;
 }
 
-function readFormTemplate(): string  {
+function readFormTemplate(): string {
     $formTemplateFile = __DIR__ . '/form-templates/'. FORM_TEMPLATE .'.html';
+
     if (!file_exists($formTemplateFile)) {
-        http_response_code(500);
-        echo "Can't find form template file $formTemplateFile";
-        return "";
+        throw new RuntimeException("Form template is unavailable.");
     }
 
-    $file = fopen($formTemplateFile, "r");
-    $content = fread($file, filesize($formTemplateFile));
-    fclose($file);
+    $content = file_get_contents($formTemplateFile);
+    if ($content === false) {
+        throw new RuntimeException("Form template could not be read.");
+    }
+
     return $content;
 }
 
-deliverJsWithTranslationsAndPath();
+try {
+    deliverJsWithTranslationsAndPath();
+} catch (Throwable $ex) {
+    http_response_code(500);
+    error_log(
+        "Widget delivery failed: "
+        . get_class($ex)
+        . ": "
+        . $ex->getMessage()
+    );
+    echo INTERNAL_SERVER_ERROR_MESSAGE;
+}

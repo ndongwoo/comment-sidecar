@@ -174,7 +174,7 @@ function getCommentsAsJson() {
         $stmt = Database::getConnection()->prepare(
             "SELECT id, author, content, email, reply_to, site, path, page_id, unix_timestamp(creation_date) as creationTimestamp
              FROM comments
-             WHERE site = :site and path = :path
+             WHERE site = :site and path = :path and page_id IS NULL
              ORDER BY creation_date desc;"
         );
         $stmt->bindParam(":site", $site);
@@ -270,7 +270,8 @@ function validateReplyTarget($comment) {
         return;
     }
 
-    if ($parent['path'] !== $comment['path']) {
+    if ($parent['page_id'] !== null
+        || $parent['path'] !== $comment['path']) {
         throw new InvalidRequestException(
             "replyTo must refer to a comment in the same thread."
         );
@@ -337,9 +338,34 @@ function validatePostedComment($comment){
     checkMaxLength($comment, 'site', 255);
     checkMaxLength($comment, 'path', 170);
     checkMaxLength($comment, 'pageId', 170);
+    checkReplyToValue($comment);
     checkNoMailHeaderNewlines($comment, 'author');
     checkNoMailHeaderNewlines($comment, 'email');
     checkNoMailHeaderNewlines($comment, 'path');
+}
+
+function checkReplyToValue($comment) {
+    if (!array_key_exists('replyTo', $comment)
+        || $comment['replyTo'] === null
+        || $comment['replyTo'] === '') {
+        return;
+    }
+
+    $replyTo = $comment['replyTo'];
+
+    if (is_int($replyTo) && $replyTo > 0) {
+        return;
+    }
+
+    if (is_string($replyTo)
+        && preg_match('/^[0-9]+$/D', $replyTo) === 1
+        && (int) $replyTo > 0) {
+        return;
+    }
+
+    throw new InvalidRequestException(
+        "replyTo must be a positive integer."
+    );
 }
 
 function checkNoMailHeaderNewlines($comment, $fieldName) {
@@ -410,7 +436,18 @@ function sendNotificationToAdminViaMail($comment) {
 function sendNotificationToParentAuthorViaMail($new_comment){
     $parentComment = find_parent_author_email($new_comment["replyTo"]);
     if ($parentComment !== null) {
-        $translations = readTranslations();
+        try {
+            $translations = readTranslations();
+        } catch (Throwable $ex) {
+            error_log(
+                "Reply notification skipped: "
+                . get_class($ex)
+                . ": "
+                . $ex->getMessage()
+            );
+            return;
+        }
+
         $parentAuthor = $parentComment['author'];
         $author = $new_comment['author'];
         $unsubscribeUrl = BASE_URL . "unsubscribe.php?commentId=".$parentComment["id"]."&unsubscribeToken=".$parentComment["unsubscribe_token"];
