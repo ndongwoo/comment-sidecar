@@ -257,7 +257,7 @@ def test_POST_blank_fields(field):
 def test_POST_to_long_fields():
     post_comment_to_long_field_and_assert_error('author', 40)
     post_comment_to_long_field_and_assert_error('email', 40)
-    post_comment_to_long_field_and_assert_error('site', 40)
+    post_comment_to_long_field_and_assert_error('site', 255)
     post_comment_to_long_field_and_assert_error('path', 170)
 
 def test_POST_spam_protection_set_url_is_spam():
@@ -635,4 +635,3 @@ def get_file_path(path):
 
 if __name__ == '__main__':
     unittest.main()
-

@@ -7,7 +7,10 @@ from mysql.connector import connect
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-MIGRATION_FILE = ROOT_DIR / "sql" / "migrations" / "001_add_page_id.sql"
+MIGRATION_FILES = [
+    ROOT_DIR / "sql" / "migrations" / "001_add_page_id.sql",
+    ROOT_DIR / "sql" / "migrations" / "002_widen_site.sql",
+]
 
 MYSQL_CONNECTION = {
     "host": "127.0.0.1",
@@ -78,15 +81,16 @@ def test_page_id_migration_preserves_existing_comments():
             )
             db.commit()
 
-            migration_sql = MIGRATION_FILE.read_text(encoding="utf-8")
-            statements = [
-                statement.strip()
-                for statement in migration_sql.split(";")
-                if statement.strip()
-            ]
+            for migration_file in MIGRATION_FILES:
+                migration_sql = migration_file.read_text(encoding="utf-8")
+                statements = [
+                    statement.strip()
+                    for statement in migration_sql.split(";")
+                    if statement.strip()
+                ]
 
-            for statement in statements:
-                cursor.execute(statement)
+                for statement in statements:
+                    cursor.execute(statement)
 
             db.commit()
 
@@ -97,6 +101,14 @@ def test_page_id_migration_preserves_existing_comments():
             assert column is not None
             assert column[0] == "page_id"
             assert column[2] == "YES"
+
+            cursor.execute(
+                "SHOW COLUMNS FROM comments LIKE 'site'"
+            )
+            site_column = cursor.fetchone()
+            assert site_column is not None
+            assert site_column[1].lower() == "varchar(255)"
+
 
             cursor.execute(
                 """

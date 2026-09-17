@@ -58,13 +58,14 @@ Create a MySQL database and note the credentials.
 
 For a fresh installation, create the required tables and indexes by executing [`sql/init.sql`](sql/init.sql).
 
-If you are upgrading an existing comment-sidecar installation that already contains comments, **do not run `sql/init.sql` again**, because that script recreates the tables. Back up the database first and run the following migration exactly once instead:
+If you are upgrading an existing comment-sidecar installation that already contains comments, **do not run `sql/init.sql` again**, because that script recreates the tables. Back up the database first and run the R1.5 migrations exactly once, in this order:
 
 ```text
 sql/migrations/001_add_page_id.sql
+sql/migrations/002_widen_site.sql
 ```
 
-The migration adds a nullable `page_id` column and its lookup index without deleting existing comments. Existing comments keep `page_id = NULL` and continue to use the historical `site + path` thread lookup.
+The first migration adds a nullable `page_id` column and its lookup index. The second widens `site` so public site base URLs up to 255 characters can be used. Existing comments are preserved, keep `page_id = NULL`, and continue to use the historical `site + path` thread lookup until explicitly migrated.
 
 Copy the whole content of the `src` directory (except `playground.html`) to your web space. You can put it wherever you like. Just remember the path. The following example assumes that all files are put in the root directory `/`.
 
@@ -104,7 +105,7 @@ Open the HTML file where you would like to embed the comments. The preferred emb
 </script>
 ```
 
-`data-site` identifies the site that owns the comment thread. When notification links are used, a public site base URL such as `https://www.example.com` is recommended because comment-sidecar combines the site value with the current page path when it builds links.
+`data-site` identifies the site that owns the comment thread. When notification links are used, a public site base URL such as `https://www.example.com` is recommended because comment-sidecar combines the site value with the current page path when it builds links. The value may be up to 255 characters.
 
 `data-page-id` is a stable identifier for the page's comment thread. It should not change when the page URL changes. For example, a page may move from `/blog/old-title/` to `/articles/new-title/` while retaining:
 
@@ -247,4 +248,4 @@ Use host `127.0.0.1` instead of `localhost`! Port `3306`. Database `comment-side
 
 ## Debugging with IntelliJ IDEA/PhpStorm
 
-A tutorial for set up remote debugging of PHP code executed in a Docker container can be found [here](https://blog.philipphauer.de/debug-php-docker-container-idea-phpstorm/). 
+A tutorial for set up remote debugging of PHP code executed in a Docker container can be found [here](https://blog.philipphauer.de/debug-php-docker-container-idea-phpstorm/).

@@ -6,7 +6,7 @@ CREATE TABLE comments (
   `email` varchar(40) DEFAULT NULL,
   `content` text NOT NULL,
   `reply_to` int(11) DEFAULT NULL,
-  `site` varchar(40) NOT NULL,
+  `site` varchar(255) NOT NULL,
   `path` varchar(170) NOT NULL,
   `page_id` varchar(170) DEFAULT NULL,
   `subscribed` BOOL NOT NULL,

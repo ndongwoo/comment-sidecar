@@ -207,3 +207,18 @@ def test_legacy_reply_to_different_path_is_rejected():
     assert response.status_code == 400
     assert response.json()["message"] == \
         "replyTo must refer to a comment in the same thread."
+
+def test_long_public_site_url_is_supported():
+    site = (
+        "https://comments-for-a-long-project-name."
+        "subdomain.example.com"
+    )
+    assert len(site) > 40
+    assert len(site) <= 255
+
+    page_id = "article-long-site"
+    post_comment(payload(site, "/article/", page_id))
+
+    response = get_by_page_id(site, page_id)
+    assert response.status_code == 200
+    assert len(response.json()) == 1

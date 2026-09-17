@@ -81,6 +81,10 @@ function getCommentsAsJson() {
     }
 
     $site = $_GET['site'];
+    if (utf8Length($site) > 255) {
+        throw new InvalidRequestException("site value exceeds maximal length of 255");
+    }
+
     $pageId = $_GET['pageId'] ?? null;
 
     if (is_string($pageId) && trim($pageId) !== '') {
@@ -265,7 +269,7 @@ function validatePostedComment($comment){
     checkExistence($comment, 'path');
     checkMaxLength($comment, 'author', 40);
     checkMaxLength($comment, 'email', 40);
-    checkMaxLength($comment, 'site', 40);
+    checkMaxLength($comment, 'site', 255);
     checkMaxLength($comment, 'path', 170);
     checkMaxLength($comment, 'pageId', 170);
 }
