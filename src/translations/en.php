@@ -24,6 +24,7 @@ $translations = array(
 
     # reply notification e-mail
     'subject' => 'Reply to your comment by {}',
+    'greeting' => 'Hi {}',
     'introduction' => 'There is a reply to your comment.',
     'author' => 'Author',
     'message' => 'Message',

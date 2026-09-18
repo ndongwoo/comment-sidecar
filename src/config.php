@@ -1,5 +1,5 @@
 <?php
-const LANGUAGE = "en"; # see the `translations` folder for supported languages
+const LANGUAGE = "en"; # default/fallback language; embeds may select another translation with ?lang=<code>
 const SITE = "http://testdomain.com"; # legacy fallback when an embed does not set data-site. For browser writes, use an absolute public http(s) URL whose origin matches the embedding page. This value is part of thread identity; migrate existing rows before changing it.
 const E_MAIL_FOR_NOTIFICATIONS = "test@localhost.de"; # admin mail that will receive a notification e-mail after every new comment
 const BASE_URL = "http://localhost/"; # base url of the comment-sidecar backend. can differ from the embedding site.

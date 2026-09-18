@@ -17,7 +17,7 @@ comment-sidecar is a **lightweight, tracking-free, self-hosted comment service**
     - Users receive Mail if there is an direct reply to their comment.
 - Use one comment-sidecar installation for multiple sites.
 - Replying to a comment is supported.
-- Multi-language support (pull requests adding more languages are highly welcome).
+- Multi-language support with per-embed language selection. Bundled translations: English (`en`), German (`de`), Dutch (`nl`), and Korean (`ko`).
 - Customizable form HTML
 - Import existing Disqus comments.
 - Simple rate limiting based on a keyed HMAC of `$_SERVER['REMOTE_ADDR']`; the application rate-limit table does not store the raw IP.
@@ -75,7 +75,7 @@ Open `config.php` and configure it:
 
 ```php
 <?php
-const LANGUAGE = "en"; # see the `translations` folder for supported languages
+const LANGUAGE = "en"; # default/fallback language; individual embeds may use ?lang=<code>
 const SITE = "https://www.example.com"; # legacy fallback if an embed does not provide data-site; browser writes require an absolute http(s) URL
 const E_MAIL_FOR_NOTIFICATIONS = "your.email@domain.com"; # admin mail that will receive a notification e-mail after every new comment
 const BASE_URL = "http://mydomain.com/"; # base url of the comment-sidecar backend. can differ from the embedding site.
@@ -111,11 +111,19 @@ Open the HTML file where you would like to embed the comments. The preferred emb
 <aside id="comment-sidecar"></aside>
 <script
     async
-    src="https://comments.example.com/comment-sidecar-js-delivery.php"
+    src="https://comments.example.com/comment-sidecar-js-delivery.php?lang=ko"
     data-site="https://www.example.com"
     data-page-id="article-2026-001">
 </script>
 ```
+
+### Language selection
+
+The widget language can be selected independently for each embed by adding `?lang=<code>` to `comment-sidecar-js-delivery.php`. The bundled translations are `en`, `de`, `nl`, and `ko`. For example, `?lang=ko` serves the Korean widget while another site using the same backend can request `?lang=en`.
+
+If `lang` is omitted, `LANGUAGE` from `config.php` is used as the default. Locale variants fall back to their base language when available, so `?lang=ko-KR` resolves to `ko`. An unavailable but syntactically valid language code falls back to the configured default.
+
+Additional languages can be added by creating `src/translations/<code>.php` with the same translation keys as the bundled files. The resolved language is also sent with comment POSTs so reply-notification e-mails use the language of the current widget. The language is not stored with the comment.
 
 `data-site` identifies the site that owns the comment thread. When notification links are used, use an absolute public HTTP(S) site URL such as `https://www.example.com` because comment-sidecar combines the site value with the current page path when it builds links. The value may be up to 255 characters.
 

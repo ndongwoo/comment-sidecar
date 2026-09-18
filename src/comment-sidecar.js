@@ -1,6 +1,7 @@
 (function() {
     const BASE_PATH = "{{BASE_PATH}}";
     const LEGACY_SITE = "{{SITE}}";
+    const LANGUAGE = "{{LANGUAGE}}";
 
     const SCRIPT_NODE = document.currentScript;
     const EMBED_SITE = SCRIPT_NODE && SCRIPT_NODE.dataset
@@ -55,7 +56,8 @@
             content: formDiv.querySelector(".cs-content").value,
             site: SITE,
             path: location.pathname,
-            url: formDiv.querySelector(".cs-url").value
+            url: formDiv.querySelector(".cs-url").value,
+            language: LANGUAGE
         };
         if (PAGE_ID) {
             payload.pageId = PAGE_ID;

@@ -9,11 +9,60 @@ function connect() {
     return $handler;
 }
 
-function readTranslations(): array  {
-    $translationFile = __DIR__ . '/translations/'. LANGUAGE .'.php';
-    if (!file_exists($translationFile)) {
-        throw new RuntimeException("Translation resource is unavailable.");
+function normalizeTranslationLanguage($language): ?string {
+    if (!is_string($language)) {
+        return null;
     }
+
+    $language = strtolower(str_replace('_', '-', trim($language)));
+    if ($language === ''
+        || preg_match('/^[a-z]{2,8}(?:-[a-z0-9]{2,8})*$/D', $language) !== 1) {
+        return null;
+    }
+
+    return $language;
+}
+
+function translationLanguageCandidates(string $language): array {
+    $parts = explode('-', $language, 2);
+    if (count($parts) === 1) {
+        return [$language];
+    }
+
+    return [$language, $parts[0]];
+}
+
+function translationResourceExists(string $language): bool {
+    return file_exists(__DIR__ . '/translations/' . $language . '.php');
+}
+
+function resolveTranslationLanguage($requestedLanguage = null): string {
+    $requested = normalizeTranslationLanguage($requestedLanguage);
+    if ($requested !== null) {
+        foreach (translationLanguageCandidates($requested) as $candidate) {
+            if (translationResourceExists($candidate)) {
+                return $candidate;
+            }
+        }
+    }
+
+    $configured = normalizeTranslationLanguage(LANGUAGE);
+    if ($configured === null) {
+        throw new RuntimeException("Configured language is invalid.");
+    }
+
+    foreach (translationLanguageCandidates($configured) as $candidate) {
+        if (translationResourceExists($candidate)) {
+            return $candidate;
+        }
+    }
+
+    throw new RuntimeException("Configured translation resource is unavailable.");
+}
+
+function readTranslations($language = null): array {
+    $resolvedLanguage = resolveTranslationLanguage($language);
+    $translationFile = __DIR__ . '/translations/' . $resolvedLanguage . '.php';
 
     include $translationFile;
 

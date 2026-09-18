@@ -339,10 +339,26 @@ function validatePostedComment($comment){
     checkMaxLength($comment, 'site', 255);
     checkMaxLength($comment, 'path', 170);
     checkMaxLength($comment, 'pageId', 170);
+    checkMaxLength($comment, 'language', 20);
+    checkLanguageTag($comment);
     checkReplyToValue($comment);
     checkNoMailHeaderNewlines($comment, 'author');
     checkNoMailHeaderNewlines($comment, 'email');
     checkNoMailHeaderNewlines($comment, 'path');
+}
+
+function checkLanguageTag($comment) {
+    if (!array_key_exists('language', $comment)
+        || $comment['language'] === null) {
+        return;
+    }
+
+    if (!is_string($comment['language'])
+        || normalizeTranslationLanguage($comment['language']) === null) {
+        throw new InvalidRequestException(
+            "language must be a valid language tag."
+        );
+    }
 }
 
 function checkReplyToValue($comment) {
@@ -438,7 +454,9 @@ function sendNotificationToParentAuthorViaMail($new_comment){
     $parentComment = find_parent_author_email($new_comment["replyTo"]);
     if ($parentComment !== null) {
         try {
-            $translations = readTranslations();
+            $translations = readTranslations(
+                $new_comment['language'] ?? null
+            );
         } catch (Throwable $ex) {
             error_log(
                 "Reply notification skipped: "
@@ -454,7 +472,11 @@ function sendNotificationToParentAuthorViaMail($new_comment){
         $unsubscribeUrl = BASE_URL . "unsubscribe.php?commentId=".$parentComment["id"]."&unsubscribeToken=".$parentComment["unsubscribe_token"];
         $commentUrl = createCommentUrl($new_comment);
         $subject = str_replace("{}", $author, $translations['subject']);
-        $content = "Hi $parentAuthor,\n\n";
+        $content = str_replace(
+            "{}",
+            $parentAuthor,
+            $translations['greeting']
+        ) . "\n\n";
         $content .= $translations['introduction']."\n\n";
         $content .= $translations['author'].": $author\n";
         $content .= "URL: $commentUrl\n";

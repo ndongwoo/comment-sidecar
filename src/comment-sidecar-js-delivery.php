@@ -3,6 +3,9 @@ include_once __DIR__ . "/common.php";
 
 function deliverJsWithTranslationsAndPath(){
     header('Content-Type: application/javascript; charset=UTF-8');
+    $language = resolveTranslationLanguage($_GET['lang'] ?? null);
+    header("Content-Language: $language");
+
     $jsTemplate = __DIR__ . '/comment-sidecar.js';
     if (!file_exists($jsTemplate)) {
         throw new RuntimeException("JavaScript template is unavailable.");
@@ -17,9 +20,10 @@ function deliverJsWithTranslationsAndPath(){
     $page = str_replace("{{FORM_HTML}}", readFormTemplate(), $page);
     $page = str_replace("{{BUTTON_CSS_CLASSES_ADD_COMMENT}}", BUTTON_CSS_CLASSES_ADD_COMMENT, $page);
     $page = str_replace("{{BUTTON_CSS_CLASSES_REPLY}}", BUTTON_CSS_CLASSES_REPLY, $page);
-    foreach (readTranslations() as $key => $translation) {
+    foreach (readTranslations($language) as $key => $translation) {
         $page = str_replace("{{".$key."}}",$translation,$page);
     }
+    $page = str_replace("{{LANGUAGE}}", $language, $page);
     $page = str_replace("{{SITE}}",SITE,$page);
     $currentDir = BASE_URL;
     $page = str_replace("{{BASE_PATH}}","{$currentDir}comment-sidecar.php", $page);
